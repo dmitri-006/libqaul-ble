@@ -4,6 +4,6 @@ This is a subproject for libqaul.net.
 - Create and init project
 - Create branch java-libqaul-ble-interfacing
 - Writing code to integrate libqaul and blemodule by FFI.
-	load libqaul in main(java)
-	main(java) => libqaul => main(java)
-	main(java) => libqaul => blemodule(java) (with param)
+	load libqaul in app(java)
+	app(java) => libqaul => app(java)
+	app(java) => libqaul => blemodule(java) (with param)
