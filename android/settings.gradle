@@ -15,3 +15,5 @@ dependencyResolutionManagement {
 }
 rootProject.name = "BleQaul_tester"
 include ':app'
+include ':blemodule'
+include ':libqaul'

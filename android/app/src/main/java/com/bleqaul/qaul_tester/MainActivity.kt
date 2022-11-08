@@ -5,6 +5,8 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.view.View
+import android.widget.Button
 import android.widget.Toast
 import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
@@ -28,13 +30,13 @@ class MainActivity : AppCompatActivity(), BleRequestCallback {
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var bleWrapperClass: BleWrapperClass
     private lateinit var qaulId: String
- //   private lateinit var binding: ActivityMainBinding
+    //private lateinit var binding: ActivityMainBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-   //     binding = ActivityMainBinding.inflate(layoutInflater)
+        //binding = ActivityMainBinding.inflate(layoutInflater)
         qaulId = getDeviceName()
 
         libqaul_initialize()
@@ -43,6 +45,7 @@ class MainActivity : AppCompatActivity(), BleRequestCallback {
             qaulId = qaulId.substring(0,17)
         }
 
+        findViewById<Button>(R.id.btnInfoRequest).setOnClickListener(buttonClickListener);
 //        setSupportActionBar(binding.toolbar)
 //        bleWrapperClass = BleWrapperClass(context = this)
 //        binding.btnInfoRequest.setOnClickListener {
@@ -60,6 +63,13 @@ class MainActivity : AppCompatActivity(), BleRequestCallback {
         val navController = findNavController(R.id.nav_host_fragment_content_main)
         appBarConfiguration = AppBarConfiguration(navController.graph)
         setupActionBarWithNavController(navController, appBarConfiguration)
+
+    }
+
+    var buttonClickListener = View.OnClickListener { view->
+        when(view.getId()){
+            R.id.btnInfoRequest -> sendInfoRequest()
+        }
     }
 
     /**
@@ -321,8 +331,9 @@ class MainActivity : AppCompatActivity(), BleRequestCallback {
         val storagePath = this.filesDir.absolutePath
         net.qaul.libqaul.start(storagePath)
         AppLog.i(TAG, "libqaul started: StoragePath=$storagePath")
-  //      AppLog.i(TAG, "libqaul says: "+ net.qaul.libqaul.hello())
+
         net.qaul.libqaul.hello();
+
         while(!initialized()) {
             Thread.sleep(1)
         }
