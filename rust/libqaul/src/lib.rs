@@ -1,11 +1,12 @@
-use jni::objects::{JClass, JValue, JObject};
 use jni::JNIEnv;
+use jni::objects::{JClass, JValue, JObject, JString};
+use jni::sys::{jstring, jarray};
 
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern "system" fn Java_net_qaul_libqaul_LibQaul_hello(
     env: JNIEnv,
-    _calss: JClass,
+    _class: JClass,
 ) {
     let width = 100;
     let height = 100;
