@@ -47,7 +47,7 @@ class MainActivity : AppCompatActivity(), BleRequestCallback {
 
         findViewById<Button>(R.id.btnInfoRequest).setOnClickListener(buttonClickListener);
 //        setSupportActionBar(binding.toolbar)
-//        bleWrapperClass = BleWrapperClass(context = this)
+        bleWrapperClass = BleWrapperClass(context = this)
 //        binding.btnInfoRequest.setOnClickListener {
 //            sendInfoRequest()
 //        }
@@ -184,6 +184,7 @@ class MainActivity : AppCompatActivity(), BleRequestCallback {
      * This Method Will Be Called When BLEModule Send Response To BLERequests Sent
      */
     override fun bleResponse(data: ByteString) {
+
         val ble: BleOuterClass.Ble = BleOuterClass.Ble.parseFrom(data)
         if (ble.isInitialized) {
             when (ble.messageCase) {

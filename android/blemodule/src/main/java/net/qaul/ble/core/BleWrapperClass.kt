@@ -47,11 +47,16 @@ open class BleWrapperClass(context: AppCompatActivity) {
     private var advertMode = "low_latency"
     private var isFromMessage = false
 
+    init{
+        this.also { sInstance = it }
+    }
+
     /**
      * Static Member Declaration
      */
     companion object {
         val serviceManager = this
+        lateinit var sInstance:BleWrapperClass
 
         const val LOCATION_PERMISSION_REQ_CODE = 111
         const val LOCATION_ENABLE_REQ_CODE = 112
@@ -62,6 +67,11 @@ open class BleWrapperClass(context: AppCompatActivity) {
 		fun test_rust_call() {
 			AppLog.e("test", "----this was called from rust")
 		}
+
+        @JvmStatic
+        fun static_receiveRequest(data: ByteString, callback: BleRequestCallback) {
+            sInstance.receiveRequest(data, callback)
+        }
     }
 	
     /**
