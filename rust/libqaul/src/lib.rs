@@ -14,7 +14,6 @@ pub extern "system" fn Java_net_qaul_libqaul_LibQaul_hello(
     // let array_obj:JObject = JObject::from(b_array);
 
     let class = env
-        // .find_class("net/qaul/libqaul/LibQaul") // main->libqaul->main
         .find_class("net/qaul/ble/core/BleWrapperClass") // main->libqaul->blemodule
         .expect("Failed to load the target class");
     let result = env.call_static_method(class, "receiveRequest", "(II)V", &[
