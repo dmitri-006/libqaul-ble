@@ -11,7 +11,7 @@ public class LibQaul {
     public static native void hello();
 
     public static void receiveRequest() {
-        System.out.println("Called From JNI");
+        System.out.println("Called From FFI");
     }
 
 }
