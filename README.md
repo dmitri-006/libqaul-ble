@@ -8,6 +8,10 @@ This is a subproject for libqaul.net.
 	app(java) => libqaul => app(java)
 	app(java) => libqaul => blemodule(java) (with param)
 	
+11/8/2022
+- Added functions: hello, receiveRequest
+
+
 11/9/2022
 - Create kotlin project
-- Added functions:  hello, syssend, receiveRequest
+- Added/Updated functions: hello, syssend, receiveRequest
