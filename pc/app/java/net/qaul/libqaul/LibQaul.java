@@ -3,8 +3,9 @@ package net.qaul.libqaul;
 public class LibQaul {
     
     static {
-        System.load("F:/Task/Rust/libqaul-ble/pc/app/jniLibs/libqaul.dll");
-        // System.loadLibrary("libqaul");
+        System.loadLibrary("libqaul");
+
+        System.out.println("Loaded libqaul library.");
     }
 
     public static native void hello();
