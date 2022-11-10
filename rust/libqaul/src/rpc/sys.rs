@@ -92,7 +92,32 @@ impl Sys {
             },
         }
     }
+	
+	/// send an sys message to Android BLE Module
+    /// This function will call the Android BLE Module's "receiveRequest" function.
+    pub fn send_to_android(message: Vec<u8>) {
+        let jvm_args = InitArgsBuilder::new()
+            .version(JNIVersion::V8)
+            .option("-Xcheck:jni")
+            .build()
+            .unwrap();
 
+        let jvm = JavaVM::new(jvm_args).unwrap();
+        let jenv:AttachGuard = jvm.attach_current_thread().unwrap();
+
+        let BleWrapperClass = jenv
+            .find_class("net/qaul/ble/core/BleWrapperClass")
+            .expect("Failed to load the target class");
+        
+        let jmessage:jbyteArray = jenv.byte_array_from_slice(message.as_slice()).unwrap();
+
+        let result = jenv.call_static_method(BleWrapperClass, "static_receiveRequest", "([B)V", &[
+            JValue::from(jmessage)
+        ]);
+        
+        result.map_err(|e| e.to_string()).unwrap();
+    }
+	
     /// Process received binary protobuf encoded SYS message
     /// 
     /// This function will decode the message from the binary
@@ -106,6 +131,7 @@ impl Sys {
     /// sends a SYS message to the outside
     pub fn send_message(data: Vec<u8>) {
         // send the message
-        Self::send_to_extern(data);
+        //Self::send_to_extern(data);
+		Self::send_to_android(data);
     }
 }
