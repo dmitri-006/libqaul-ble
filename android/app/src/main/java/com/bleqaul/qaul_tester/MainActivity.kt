@@ -54,18 +54,6 @@ class MainActivity : AppCompatActivity(), BleRequestCallback {
         bleWrapperClass = BleWrapperClass(context = this)
         bleWrapperClass.setBleRequestCallback(this)
 
-//        binding.btnInfoRequest.setOnClickListener {
-//            sendInfoRequest()
-//        }
-//        binding.btnStartRequest.setOnClickListener {
-//            sendStartRequest()
-//        }
-//        binding.btnStopRequest.setOnClickListener {
-//            sendStopRequest()
-//        }
-//        binding.btnSendMessage.setOnClickListener {
-//            validateData()
-//        }
         val navController = findNavController(R.id.nav_host_fragment_content_main)
         appBarConfiguration = AppBarConfiguration(navController.graph)
         setupActionBarWithNavController(navController, appBarConfiguration)
@@ -352,15 +340,18 @@ class MainActivity : AppCompatActivity(), BleRequestCallback {
     private fun libqaul_initialize() {
         net.qaul.libqaul.loadLibqaul()
         AppLog.i(TAG, "libqaul loaded")
+
         val storagePath = this.filesDir.absolutePath
- //       net.qaul.libqaul.start(storagePath)
+
+        net.qaul.libqaul.start(storagePath)
+
         AppLog.i(TAG, "libqaul started: StoragePath=$storagePath")
 
         net.qaul.libqaul.hello();
 
-//        while(!initialized()) {
-//            Thread.sleep(1)
-//        }
+        while(!net.qaul.libqaul.initialized()) {
+            Thread.sleep(1)
+        }
         AppLog.i(TAG, "libqaul finished initializing")
 
     }
