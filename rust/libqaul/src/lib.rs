@@ -4,6 +4,7 @@
 use jni::objects::{JClass, JString};
 use jni::sys::{jstring, jbyteArray, jint};
 use jni::JNIEnv;
+use jni::{JavaVM, InitArgsBuilder, JNIVersion, AttachGuard};
 
 #[no_mangle]
 pub extern "system" fn Java_net_qaul_libqaul_LibqaulKt_hello(
@@ -31,20 +32,43 @@ pub extern "system" fn Java_net_qaul_libqaul_LibqaulKt_syssend(
     _: JClass,
     message: jbyteArray,
 ) {
-    let command = 1;
-    // get the message out of java
-    let binary_message: Vec<u8> = env.convert_byte_array(message).unwrap();
+    // let command = 1;
+    // // get the message out of java
+    // let binary_message: Vec<u8> = env.convert_byte_array(message).unwrap();
 
-    let class = env
-        .find_class("net/qaul/ble/core/BleWrapperClass") // main->libqaul->blemodule
+    // let class = env
+    //     .find_class("net/qaul/ble/core/BleWrapperClass") // main->libqaul->blemodule
+    //     .expect("Failed to load the target class");
+    // let result = env.call_static_method(class, "receiveRequest", "(I[B)V", &[
+    //     JValue::from(command),
+    //     JValue::from(binary_message),
+    // ]);
+
+    
+
+    let jvm_args = InitArgsBuilder::new()
+        .version(JNIVersion::V8)
+        .option("-Xcheck:jni")
+        .build()
+        .unwrap();
+
+    let jvm = JavaVM::new(jvm_args).unwrap();
+    let guard:AttachGuard = jvm.attach_current_thread().unwrap();
+
+    let BleWrapperClass = guard
+        .find_class("net/qaul/ble/core/BleWrapperClass")
         .expect("Failed to load the target class");
-    let result = env.call_static_method(class, "receiveRequest", "(I[B)V", &[
-        JValue::from(command),
-        JValue::from(binary_message),
+
+    let binary_message: Vec<u8> = guard.convert_byte_array(message).unwrap();
+    
+    let result = guard.call_static_method(BleWrapperClass, "receiveRequest", "([B)V", &[
+        JValue::from(message)
     ]);
+    
+    result.map_err(|e| e.to_string()).unwrap();
 
     // send it to libqaul
-    super::send_sys(binary_message);
+    // super::send_sys(binary_message);
 }
 
 /// receive a sys message on android from libqaul

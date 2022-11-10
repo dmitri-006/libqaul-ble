@@ -5,8 +5,8 @@ open class BleWrapperClass() {
     /**
      * This Method get BLERequest from UI & Return BLEResponse by Callback Interface Method
      */
-    open fun receiveRequest(command: Int, data: ByteArray) {
+    open fun receiveRequest(data: ByteArray) {
         val charset = Charsets.UTF_8;
-        println(command + " : " + data.toString(charset));
+        println(data.toString(charset));
     }
 }
