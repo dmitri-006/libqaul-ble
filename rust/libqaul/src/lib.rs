@@ -1,5 +1,6 @@
 use jni::JNIEnv;
 use jni::objects::{JClass, JValue, JObject, JString};
+use jni::{JavaVM, InitArgsBuilder, JNIVersion, AttachGuard};
 use jni::sys::{jstring, jarray, jbyteArray};
 
 /// dummy function to test the functionality
@@ -30,10 +31,22 @@ pub extern "system" fn Java_net_qaul_libqaul_LibqaulKt_syssend(
     _: JClass,
     message: jbyteArray,
 ) {
-    let BleWrapperClass = env
+    let jvm_args = InitArgsBuilder::new()
+        .version(JNIVersion::V8)
+        .option("-Xcheck:jni")
+        .build()
+        .unwrap();
+
+    let jvm = JavaVM::new(jvm_args).unwrap();
+    let guard:AttachGuard = jvm.attach_current_thread().unwrap();
+
+    let BleWrapperClass = guard
         .find_class("net/qaul/ble/core/BleWrapperClass")
         .expect("Failed to load the target class");
-    let result = env.call_static_method(BleWrapperClass, "static_receiveRequest", "([B)V", &[
+
+    let binary_message: Vec<u8> = guard.convert_byte_array(message).unwrap();
+    
+    let result = guard.call_static_method(BleWrapperClass, "static_receiveRequest", "([B)V", &[
         JValue::from(message)
     ]);
     
