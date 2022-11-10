@@ -7,11 +7,12 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
+import android.widget.EditText
+import android.widget.TextView
 import android.widget.Toast
 import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.setupActionBarWithNavController
-import com.bleqaul.qaul_tester.databinding.ActivityMainBinding
 import net.qaul.ble.AppLog
 import net.qaul.ble.callback.BleRequestCallback
 import net.qaul.ble.core.BleWrapperClass
@@ -23,7 +24,6 @@ import net.qaul.ble.core.BleWrapperClass.Companion.BLE_PERMISSION_REQ_CODE_12
 import net.qaul.ble.core.BleWrapperClass.Companion.LOCATION_ENABLE_REQ_CODE
 import net.qaul.ble.core.BleWrapperClass.Companion.LOCATION_PERMISSION_REQ_CODE
 import net.qaul.ble.core.BleWrapperClass.Companion.REQUEST_ENABLE_BT
-import net.qaul.libqaul.*
 
 class MainActivity : AppCompatActivity(), BleRequestCallback {
     private val TAG: String = "MainActivity"
@@ -46,8 +46,14 @@ class MainActivity : AppCompatActivity(), BleRequestCallback {
         }
 
         findViewById<Button>(R.id.btnInfoRequest).setOnClickListener(buttonClickListener);
+        findViewById<Button>(R.id.btnStartRequest).setOnClickListener(buttonClickListener);
+        findViewById<Button>(R.id.btnStopRequest).setOnClickListener(buttonClickListener);
+        findViewById<Button>(R.id.btnSendMessage).setOnClickListener(buttonClickListener);
+
 //        setSupportActionBar(binding.toolbar)
         bleWrapperClass = BleWrapperClass(context = this)
+        bleWrapperClass.setBleRequestCallback(this)
+
 //        binding.btnInfoRequest.setOnClickListener {
 //            sendInfoRequest()
 //        }
@@ -69,6 +75,9 @@ class MainActivity : AppCompatActivity(), BleRequestCallback {
     var buttonClickListener = View.OnClickListener { view->
         when(view.getId()){
             R.id.btnInfoRequest -> sendInfoRequest()
+            R.id.btnStartRequest -> sendStartRequest()
+            R.id.btnStopRequest -> sendStopRequest()
+            R.id.btnSendMessage -> validateData()
         }
     }
 
@@ -106,7 +115,10 @@ class MainActivity : AppCompatActivity(), BleRequestCallback {
     private fun sendInfoRequest() {
         val bleReq: BleOuterClass.Ble.Builder = BleOuterClass.Ble.newBuilder()
         bleReq.infoRequest = BleOuterClass.BleInfoRequest.getDefaultInstance()
-        bleWrapperClass.receiveRequest(data = bleReq.build().toByteString(), callback = this)
+
+        //bleWrapperClass.receiveRequest(data = bleReq.build().toByteString(), callback = this)
+
+        net.qaul.libqaul.syssend(message=bleReq.build().toByteArray())
     }
 
     /**
@@ -124,7 +136,9 @@ class MainActivity : AppCompatActivity(), BleRequestCallback {
         startRequest.qaulId = ByteString.copyFrom(qaulid)
         startRequest.powerSetting = BleOuterClass.BlePowerSetting.low_latency
         bleReq.startRequest = startRequest.build()
-        bleWrapperClass.receiveRequest(data = bleReq.build().toByteString(), callback = this)
+
+        //bleWrapperClass.receiveRequest(data = bleReq.build().toByteString(), callback = this)
+        net.qaul.libqaul.syssend(message = bleReq.build().toByteArray())
     }
 
     /**
@@ -133,34 +147,37 @@ class MainActivity : AppCompatActivity(), BleRequestCallback {
     private fun sendStopRequest() {
         val bleReq: BleOuterClass.Ble.Builder = BleOuterClass.Ble.newBuilder()
         bleReq.stopRequest = BleOuterClass.BleStopRequest.getDefaultInstance()
-        bleWrapperClass.receiveRequest(data = bleReq.build().toByteString(), callback = this)
+//        bleWrapperClass.receiveRequest(data = bleReq.build().toByteString(), callback = this)
+
+        net.qaul.libqaul.syssend(message = bleReq.build().toByteArray())
     }
 
-//    private fun validateData() {
-//        val qaulId = binding.etQaulId.text.toString()
-//        val message = binding.etMessage.text.toString()
-//        when {
-//            qaulId.length < 10 -> {
-//                Toast.makeText(
-//                    this,
-//                    "Please enter correct qaul_id of receiver",
-//                    Toast.LENGTH_SHORT
-//                ).show()
-//                return
-//            }
-//            message.isEmpty() -> {
-//                Toast.makeText(
-//                    this,
-//                    "Please enter at least 1 character of message",
-//                    Toast.LENGTH_SHORT
-//                ).show()
-//                return
-//            }
-//            else -> {
-//                sendData(qaulId = qaulId, message = "$message")
-//            }
-//        }
-//    }
+    private fun validateData() {
+        val qaulId = findViewById<EditText>(R.id.etQaulId).text.toString()
+        val message = findViewById<EditText>(R.id.etMessage).text.toString()
+
+        when {
+            qaulId.length < 10 -> {
+                Toast.makeText(
+                    this,
+                    "Please enter correct qaul_id of receiver",
+                    Toast.LENGTH_SHORT
+                ).show()
+                return
+            }
+            message.isEmpty() -> {
+                Toast.makeText(
+                    this,
+                    "Please enter at least 1 character of message",
+                    Toast.LENGTH_SHORT
+                ).show()
+                return
+            }
+            else -> {
+                sendData(qaulId = qaulId, message = "$message")
+            }
+        }
+    }
 
     private fun sendData(qaulId: String, message: String) {
         val bleReq: BleOuterClass.Ble.Builder = BleOuterClass.Ble.newBuilder()
@@ -172,7 +189,10 @@ class MainActivity : AppCompatActivity(), BleRequestCallback {
             System.currentTimeMillis().toString().toByteArray(Charset.forName("UTF-8"))
         )
         bleReq.directSend = directSend.build()
-        bleWrapperClass.receiveRequest(data = bleReq.build().toByteString(), callback = this)
+//        bleWrapperClass.receiveRequest(data = bleReq.build().toByteString(), callback = this)
+
+        net.qaul.libqaul.syssend(bleReq.build().toByteArray())
+
         runOnUiThread {
             Toast.makeText(this, "Connecting...", Toast.LENGTH_SHORT).show()
         }
@@ -241,10 +261,13 @@ class MainActivity : AppCompatActivity(), BleRequestCallback {
                     AppLog.e("directReceived: ", Gson().toJson(directReceived))
                     val message: String = directReceived.data.toString(Charset.defaultCharset())
                     val qaulId: String = directReceived.from.toString(Charset.defaultCharset())
-//                    runOnUiThread {
-//                        binding.tvMessage.text = message
-//                        binding.etQaulId.setText(qaulId)
-//                    }
+                    runOnUiThread {
+                        findViewById<TextView>(R.id.tvMessage).text = message
+                        findViewById<EditText>(R.id.etQaulId).setText(qaulId)
+
+                        //binding.tvMessage.text = message
+                        //binding.etQaulId.setText(qaulId)
+                    }
                 }
                 BleOuterClass.Ble.MessageCase.DIRECT_SEND_RESULT -> {
                     val directSendResult: BleOuterClass.BleDirectSendResult = ble.directSendResult
@@ -330,14 +353,14 @@ class MainActivity : AppCompatActivity(), BleRequestCallback {
         net.qaul.libqaul.loadLibqaul()
         AppLog.i(TAG, "libqaul loaded")
         val storagePath = this.filesDir.absolutePath
-        net.qaul.libqaul.start(storagePath)
+ //       net.qaul.libqaul.start(storagePath)
         AppLog.i(TAG, "libqaul started: StoragePath=$storagePath")
 
         net.qaul.libqaul.hello();
 
-        while(!initialized()) {
-            Thread.sleep(1)
-        }
+//        while(!initialized()) {
+//            Thread.sleep(1)
+//        }
         AppLog.i(TAG, "libqaul finished initializing")
 
     }

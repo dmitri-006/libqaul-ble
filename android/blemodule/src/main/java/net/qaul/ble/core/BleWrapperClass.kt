@@ -18,6 +18,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.lifecycle.LifecycleService
@@ -33,7 +34,6 @@ import net.qaul.ble.model.BLEScanDevice
 import net.qaul.ble.model.Message
 import net.qaul.ble.service.BleService
 import qaul.sys.ble.BleOuterClass
-import qaul.sys.ble.BleOuterClass.Ble
 import java.nio.charset.Charset
 
 @SuppressLint("MissingPermission")
@@ -69,18 +69,28 @@ open class BleWrapperClass(context: AppCompatActivity) {
 		}
 
         @JvmStatic
-        fun static_receiveRequest(data: ByteString, callback: BleRequestCallback) {
-            sInstance.receiveRequest(data, callback)
+        fun static_receiveRequest(data: ByteArray) {
+            AppLog.e("test", "----this was called from rust")
+            sInstance.receiveRequest(ByteString.copyFrom(data), null)
         }
     }
-	
+
+    /**
+     * This Method set BleRequestCallback
+     */
+    open fun setBleRequestCallback(callback: BleRequestCallback?) {
+        bleCallback = callback
+    }
+
     /**
      * This Method get BLERequest from UI & Return BLEResponse by Callback Interface Method
      */
-    open fun receiveRequest(data: ByteString, callback: BleRequestCallback) {
+    open fun receiveRequest(data: ByteString, callback: BleRequestCallback?) {
         val bleReq: BleOuterClass.Ble = BleOuterClass.Ble.parseFrom(data)
         if (bleReq.isInitialized) {
-            bleCallback = callback
+            if(callback != null)
+                bleCallback = callback
+
             Log.e(TAG, bleReq.messageCase.toString())
             when (bleReq.messageCase) {
                 BleOuterClass.Ble.MessageCase.INFO_REQUEST -> {
@@ -334,15 +344,15 @@ open class BleWrapperClass(context: AppCompatActivity) {
                     deviceInfoBuilder.name = adapter.name
                 }
                 deviceInfoBuilder.bleSupport = isBLeSupported()
-                deviceInfoBuilder.advExtended = adapter.isLeExtendedAdvertisingSupported
-                deviceInfoBuilder.le2M = adapter.isLe2MPhySupported
-                deviceInfoBuilder.leCoded = adapter.isLeCodedPhySupported
-                deviceInfoBuilder.advExtendedBytes = adapter.leMaximumAdvertisingDataLength
 
-                //Return true if LE Periodic Advertising feature is supported.
-                deviceInfoBuilder.lePeriodicAdvSupport =
-                    adapter.isLePeriodicAdvertisingSupported
-
+//                deviceInfoBuilder.advExtended = adapter.isLeExtendedAdvertisingSupported
+//                deviceInfoBuilder.le2M = adapter.isLe2MPhySupported
+//                deviceInfoBuilder.leCoded = adapter.isLeCodedPhySupported
+//                deviceInfoBuilder.advExtendedBytes = adapter.leMaximumAdvertisingDataLength
+//
+//                //Return true if LE Periodic Advertising feature is supported.
+//                deviceInfoBuilder.lePeriodicAdvSupport =
+//                    adapter.isLePeriodicAdvertisingSupported
                 //Return true if the multi advertisement is supported by the chipset
                 deviceInfoBuilder.leMultipleAdvSupport =
                     adapter.isMultipleAdvertisementSupported
