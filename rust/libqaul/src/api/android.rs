@@ -10,10 +10,11 @@
 #![cfg(target_os = "android")]
 #![allow(non_snake_case)]
 
-use jni::objects::{JClass, JString};
-use jni::sys::{jstring, jbyteArray, jint};
+/// Modules for integrating with JavaVM
 use jni::JNIEnv;
-
+use jni::objects::{JClass, JValue, JObject, JString};
+use jni::{JavaVM, InitArgsBuilder, JNIVersion, AttachGuard};
+use jni::sys::{jstring, jarray, jbyteArray,jint};
 
 /// dummy function to test the functionality
 #[no_mangle]
@@ -150,4 +151,36 @@ pub extern "system" fn Java_net_qaul_libqaul_LibqaulKt_sysreceive(
     let buf: [u8; 0] = [0; 0];
     let empty_array = env.byte_array_from_slice(&buf).unwrap();
     empty_array
+}
+
+pub struct Android {
+
+}
+
+impl Android {
+
+    /// send an sys message to Android BLE Module
+    /// This function will call the Android BLE Module's "receiveRequest" function.
+    pub fn send_to_android(message: Vec<u8>) {
+        let jvm_args = InitArgsBuilder::new()
+            .version(JNIVersion::V8)
+            .option("-Xcheck:jni")
+            .build()
+            .unwrap();
+
+        let jvm = JavaVM::new(jvm_args).unwrap();
+        let jenv:AttachGuard = jvm.attach_current_thread().unwrap();
+
+        let BleWrapperClass = jenv
+            .find_class("net/qaul/ble/core/BleWrapperClass")
+            .expect("Failed to load the target class");
+        
+        let jmessage:jbyteArray = jenv.byte_array_from_slice(message.as_slice()).unwrap();
+
+        let result = jenv.call_static_method(BleWrapperClass, "static_receiveRequest", "([B)V", &[
+            JValue::from(jmessage)
+        ]);
+        
+        result.map_err(|e| e.to_string()).unwrap();
+    }
 }

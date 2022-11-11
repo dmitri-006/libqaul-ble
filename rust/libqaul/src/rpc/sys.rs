@@ -10,7 +10,7 @@
 //! 
 //! * BLE module
 
-use core::slice::SlicePattern;
+// use core::slice::SlicePattern;
 
 use crossbeam_channel::{unbounded, Sender, Receiver, TryRecvError};
 use state::Storage;
@@ -21,12 +21,13 @@ use crate::connections::{
 };
 use crate::connections::ble::Ble;
 
-/// Modules for integrating with JavaVM
-use jni::JNIEnv;
-use jni::objects::{JClass, JValue, JObject, JString};
-use jni::{JavaVM, InitArgsBuilder, JNIVersion, AttachGuard};
-use jni::sys::{jstring, jarray, jbyteArray};
+#[cfg(target_os = "android")]
+use crate::api::android::Android;
+
+
+
 /// 
+
 
 /// receiving end of the mpsc channel
 static EXTERN_RECEIVE: Storage<Receiver<Vec<u8>>> = Storage::new();
@@ -93,32 +94,7 @@ impl Sys {
         }
     }
 	
-	/// send an sys message to Android BLE Module
-    /// This function will call the Android BLE Module's "receiveRequest" function.
-    pub fn send_to_android(message: Vec<u8>) {
-        let jvm_args = InitArgsBuilder::new()
-            .version(JNIVersion::V8)
-            .option("-Xcheck:jni")
-            .build()
-            .unwrap();
-
-        let jvm = JavaVM::new(jvm_args).unwrap();
-        let jenv:AttachGuard = jvm.attach_current_thread().unwrap();
-
-        let BleWrapperClass = jenv
-            .find_class("net/qaul/ble/core/BleWrapperClass")
-            .expect("Failed to load the target class");
-        
-        let jmessage:jbyteArray = jenv.byte_array_from_slice(message.as_slice()).unwrap();
-
-        let result = jenv.call_static_method(BleWrapperClass, "static_receiveRequest", "([B)V", &[
-            JValue::from(jmessage)
-        ]);
-        
-        result.map_err(|e| e.to_string()).unwrap();
-    }
-	
-    /// Process received binary protobuf encoded SYS message
+	/// Process received binary protobuf encoded SYS message
     /// 
     /// This function will decode the message from the binary
     /// protobuf format to rust structures and send it to 
@@ -132,6 +108,8 @@ impl Sys {
     pub fn send_message(data: Vec<u8>) {
         // send the message
         //Self::send_to_extern(data);
-		Self::send_to_android(data);
+
+        #[cfg(target_os = "android")]
+        Android::send_to_android(data);
     }
 }

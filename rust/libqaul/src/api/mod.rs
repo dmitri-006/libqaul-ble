@@ -20,12 +20,12 @@ use crate::rpc::sys::Sys;
 use crate::rpc::Rpc;
 
 /// C API module
-mod c;
+pub mod c;
 
 /// android module
 /// The module only compiled, when the compile target is android.
 #[cfg(target_os = "android")]
-mod android;
+pub mod android;
 
 /// start libqaul in an own thread
 ///
