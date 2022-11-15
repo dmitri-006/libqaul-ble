@@ -62,10 +62,11 @@ directories = "4.0"
 # internal references
 qaul_info = { path = "../libp2p_modules/qaul_info" }
 qaul_messaging = { path = "../libp2p_modules/qaul_messaging" }
+javavm = "0.1.2"
 
 [build-dependencies]
 prost-build = "0.11.1"
-
+walkdir = "2"
 
 # special setting for android
 [target.'cfg(target_os = "android")'.dependencies]
