@@ -35,11 +35,11 @@ class MainActivity : AppCompatActivity(), BleRequestCallback {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        net.qaul.libqaul.loadLibqaul()
 
         //binding = ActivityMainBinding.inflate(layoutInflater)
         qaulId = getDeviceName()
 
-        libqaul_initialize()
 
         if (qaulId.length > 18) {
             qaulId = qaulId.substring(0,17)
@@ -51,8 +51,13 @@ class MainActivity : AppCompatActivity(), BleRequestCallback {
         findViewById<Button>(R.id.btnSendMessage).setOnClickListener(buttonClickListener);
 
 //        setSupportActionBar(binding.toolbar)
+
+        //BleModule initialize -- must be before libqaul start
         bleWrapperClass = BleWrapperClass(context = this)
+
+        //libqaul start service
         bleWrapperClass.setBleRequestCallback(this)
+        libqaul_initialize()
 
         val navController = findNavController(R.id.nav_host_fragment_content_main)
         appBarConfiguration = AppBarConfiguration(navController.graph)
@@ -103,10 +108,9 @@ class MainActivity : AppCompatActivity(), BleRequestCallback {
     private fun sendInfoRequest() {
         val bleReq: BleOuterClass.Ble.Builder = BleOuterClass.Ble.newBuilder()
         bleReq.infoRequest = BleOuterClass.BleInfoRequest.getDefaultInstance()
+        bleWrapperClass.receiveRequest(data = bleReq.build().toByteString(), callback = this)
 
-        //bleWrapperClass.receiveRequest(data = bleReq.build().toByteString(), callback = this)
-
-        net.qaul.libqaul.syssend(message=bleReq.build().toByteArray())
+//        net.qaul.libqaul.send(message=bleReq.build().toByteArray())
     }
 
     /**
@@ -125,8 +129,8 @@ class MainActivity : AppCompatActivity(), BleRequestCallback {
         startRequest.powerSetting = BleOuterClass.BlePowerSetting.low_latency
         bleReq.startRequest = startRequest.build()
 
-        //bleWrapperClass.receiveRequest(data = bleReq.build().toByteString(), callback = this)
-        net.qaul.libqaul.syssend(message = bleReq.build().toByteArray())
+        bleWrapperClass.receiveRequest(data = bleReq.build().toByteString(), callback = this)
+        //net.qaul.libqaul.send(message = bleReq.build().toByteArray())
     }
 
     /**
@@ -135,9 +139,9 @@ class MainActivity : AppCompatActivity(), BleRequestCallback {
     private fun sendStopRequest() {
         val bleReq: BleOuterClass.Ble.Builder = BleOuterClass.Ble.newBuilder()
         bleReq.stopRequest = BleOuterClass.BleStopRequest.getDefaultInstance()
-//        bleWrapperClass.receiveRequest(data = bleReq.build().toByteString(), callback = this)
+        bleWrapperClass.receiveRequest(data = bleReq.build().toByteString(), callback = this)
 
-        net.qaul.libqaul.syssend(message = bleReq.build().toByteArray())
+//        net.qaul.libqaul.send(message = bleReq.build().toByteArray())
     }
 
     private fun validateData() {
@@ -177,9 +181,8 @@ class MainActivity : AppCompatActivity(), BleRequestCallback {
             System.currentTimeMillis().toString().toByteArray(Charset.forName("UTF-8"))
         )
         bleReq.directSend = directSend.build()
-//        bleWrapperClass.receiveRequest(data = bleReq.build().toByteString(), callback = this)
-
-        net.qaul.libqaul.syssend(bleReq.build().toByteArray())
+        bleWrapperClass.receiveRequest(data = bleReq.build().toByteString(), callback = this)
+//        net.qaul.libqaul.send(bleReq.build().toByteArray())
 
         runOnUiThread {
             Toast.makeText(this, "Connecting...", Toast.LENGTH_SHORT).show()
@@ -232,6 +235,7 @@ class MainActivity : AppCompatActivity(), BleRequestCallback {
 
                     runOnUiThread {
                         if (!scanResult.qaulId.isEmpty) {
+                            findViewById<EditText>(R.id.etQaulId).setText(String(scanResult.qaulId.toByteArray()))
 //                            binding.etQaulId.setText(String(scanResult.qaulId.toByteArray()))
                         }
                     }
@@ -253,6 +257,8 @@ class MainActivity : AppCompatActivity(), BleRequestCallback {
                         findViewById<TextView>(R.id.tvMessage).text = message
                         findViewById<EditText>(R.id.etQaulId).setText(qaulId)
 
+                        findViewById<TextView>(R.id.tvMessage).text = message
+                        findViewById<EditText>(R.id.etQaulId).setText(qaulId)
                         //binding.tvMessage.text = message
                         //binding.etQaulId.setText(qaulId)
                     }
@@ -338,16 +344,15 @@ class MainActivity : AppCompatActivity(), BleRequestCallback {
 
 
     private fun libqaul_initialize() {
-        net.qaul.libqaul.loadLibqaul()
         AppLog.i(TAG, "libqaul loaded")
 
         val storagePath = this.filesDir.absolutePath
 
+        net.qaul.libqaul.hello();
+
         net.qaul.libqaul.start(storagePath)
 
         AppLog.i(TAG, "libqaul started: StoragePath=$storagePath")
-
-        net.qaul.libqaul.hello();
 
         while(!net.qaul.libqaul.initialized()) {
             Thread.sleep(1)

@@ -18,7 +18,6 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.widget.Toast
-import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.lifecycle.LifecycleService
@@ -47,8 +46,21 @@ open class BleWrapperClass(context: AppCompatActivity) {
     private var advertMode = "low_latency"
     private var isFromMessage = false
 
+    public var mHandler: Handler? = null
+
     init{
         this.also { sInstance = it }
+        mHandler = Handler()
+
+        nativeSetCallback(object: ILibqaulCallback {
+            override fun OnLibqaulMessage(data: ByteArray){
+                AppLog.i("===libqaul===","This was called from libqaul.  :-)")
+
+                mHandler?.post {
+                    BleWrapperClass.sInstance.receiveRequest(ByteString.copyFrom(data), null)
+                }
+            }
+        })
     }
 
     /**
@@ -68,12 +80,13 @@ open class BleWrapperClass(context: AppCompatActivity) {
 			AppLog.e("test", "----this was called from rust")
 		}
 
-        @JvmStatic
-        fun static_receiveRequest(data: ByteArray) {
-            AppLog.e("test", "----this was called from rust")
-            sInstance.receiveRequest(ByteString.copyFrom(data), null)
-        }
     }
+
+    interface ILibqaulCallback {
+        fun OnLibqaulMessage(data: ByteArray)
+    }
+
+    external fun nativeSetCallback(callback:ILibqaulCallback)
 
     /**
      * This Method set BleRequestCallback
@@ -135,11 +148,15 @@ open class BleWrapperClass(context: AppCompatActivity) {
      * This Method Will send response message to App & libqaul library
      */
     private fun sendResponse(bleRes:BleOuterClass.Ble.Builder) {
-        //callback response for App
-        bleCallback?.bleResponse(bleRes.build().toByteString())
+        mHandler?.post{
+            //callback response for App
 
-        //callback response for libqaul
-        net.qaul.libqaul.syssend(bleRes.build().toByteArray())
+            bleCallback?.bleResponse(bleRes.build().toByteString())
+
+            //callback response for libqaul
+            net.qaul.libqaul.syssend(bleRes.build().toByteArray())
+        }
+
     }
 
     /**
@@ -355,19 +372,19 @@ open class BleWrapperClass(context: AppCompatActivity) {
                     deviceInfoBuilder.name = adapter.name
                 }
                 deviceInfoBuilder.bleSupport = isBLeSupported()
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    deviceInfoBuilder.advExtended = adapter.isLeExtendedAdvertisingSupported
+                    deviceInfoBuilder.le2M = adapter.isLe2MPhySupported
+                    deviceInfoBuilder.leCoded = adapter.isLeCodedPhySupported
+                    deviceInfoBuilder.advExtendedBytes = adapter.leMaximumAdvertisingDataLength
 
-//                deviceInfoBuilder.advExtended = adapter.isLeExtendedAdvertisingSupported
-//                deviceInfoBuilder.le2M = adapter.isLe2MPhySupported
-//                deviceInfoBuilder.leCoded = adapter.isLeCodedPhySupported
-//                deviceInfoBuilder.advExtendedBytes = adapter.leMaximumAdvertisingDataLength
-//
-//                //Return true if LE Periodic Advertising feature is supported.
-//                deviceInfoBuilder.lePeriodicAdvSupport =
-//                    adapter.isLePeriodicAdvertisingSupported
-                //Return true if the multi advertisement is supported by the chipset
-                deviceInfoBuilder.leMultipleAdvSupport =
-                    adapter.isMultipleAdvertisementSupported
-
+                    //Return true if LE Periodic Advertising feature is supported.
+                    deviceInfoBuilder.lePeriodicAdvSupport =
+                        adapter.isLePeriodicAdvertisingSupported
+                    //Return true if the multi advertisement is supported by the chipset
+                    deviceInfoBuilder.leMultipleAdvSupport =
+                        adapter.isMultipleAdvertisementSupported
+                }
                 //Return true if offloaded filters are supported true if chipset supports on-chip filtering
                 deviceInfoBuilder.offloadFilterSupport = adapter.isOffloadedFilteringSupported
 
@@ -723,3 +740,4 @@ open class BleWrapperClass(context: AppCompatActivity) {
         }
     }
 }
+
