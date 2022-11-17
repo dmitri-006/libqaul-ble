@@ -9,18 +9,60 @@
 
 #![cfg(target_os = "android")]
 #![allow(non_snake_case)]
-
+extern crate log;
 /// Modules for integrating with JavaVM
 use jni::JNIEnv;
-use jni::objects::{JClass, JValue, JObject, JString};
-use jni::{JavaVM, InitArgsBuilder, JNIVersion, AttachGuard};
-use jni::sys::{jstring, jarray, jbyteArray,jint};
+use jni::objects::{JClass, JValue, JObject, JString, GlobalRef};
+use jni::{JavaVM, JNIVersion, AttachGuard, NativeMethod};
+use jni::sys::{jstring, jarray, jbyteArray,jint, jclass, JNI_ERR, JNI_VERSION_1_6};
 
-pub struct Android {
+use lazy_static::*;
+use std::{
+    ffi::{c_void, CStr, CString},
+    sync::{mpsc, Mutex},
+    thread,
+};
 
+extern crate android_logger;
+
+use log::Level;
+use android_logger::{Config,FilterBuilder};
+
+lazy_static! {
+    // jvm
+    static ref JVM_GLOBAL: Mutex<Option<JavaVM>> = Mutex::new(None);
+    //callback
+    static ref JNI_CALLBACK: Mutex<Option<GlobalRef>> = Mutex::new(None);
 }
 
-impl Android {
+
+#[no_mangle]
+pub fn nativeSetCallback(env: JNIEnv, _obj: JObject, callback: JObject) {
+    let callback = env.new_global_ref(JObject::from(callback)).unwrap();
+
+    let mut ptr_fn = JNI_CALLBACK.lock().unwrap();
+    *ptr_fn = Some(callback);
+}
+
+#[no_mangle]
+unsafe fn JNI_OnLoad(java_vm:JavaVM, _: *mut std::os::raw::c_void) -> jint {
+    let class_name: &str = "net/qaul/ble/core/BleWrapperClass";
+
+    let jni_methods = [
+        jni::NativeMethod {
+            name: jni::strings::JNIString::from("nativeSetCallback"),
+            sig: jni::strings::JNIString::from("(Lnet/qaul/ble/core/BleWrapperClass$ILibqaulCallback;)V"),
+            fn_ptr: nativeSetCallback as *mut c_void,
+        }
+    ];
+    let ok = Android::register_natives(&java_vm, class_name, jni_methods.as_ref());
+
+    let mut ptr_jvm = JVM_GLOBAL.lock().unwrap();
+    *ptr_jvm = Some(java_vm);
+    
+    JNI_VERSION_1_6
+} 
+    
 /// dummy function to test the functionality
 #[no_mangle]
 pub extern "system" fn Java_net_qaul_libqaul_LibqaulKt_hello(
@@ -29,8 +71,6 @@ pub extern "system" fn Java_net_qaul_libqaul_LibqaulKt_hello(
 ) -> jstring {
     // create a string
     let jvm = env.get_java_vm().unwrap();
-    javavm::set_jvm(Some(env.get_java_vm().unwrap()));
-
     let output = env
         .new_string(format!("Hello qaul!"))
         .expect("Couldn't create java string!");
@@ -46,8 +86,6 @@ pub extern "system" fn Java_net_qaul_libqaul_LibqaulKt_start(
   _: JClass,
   path: JString,
 ) {
-    // let jvm = env.get_java_vm().unwrap();
-    // javavm::set_jvm(Some(jvm));
     // get path string
     let android_path: String = env
         .get_string(path)
@@ -139,20 +177,8 @@ pub extern "system" fn Java_net_qaul_libqaul_LibqaulKt_syssend(
     // get the message out of java
     let binary_message: Vec<u8> = env.convert_byte_array(message).unwrap();
 
-    Self::send_to_android(binary_message);
-    // let jenv = javavm::get_env();
-    // let BleWrapperClass = jenv
-    //     .find_class("net/qaul/ble/core/BleWrapperClass")
-    //     .expect("Failed to load the target class");
-    
-    // let jmessage:jbyteArray = jenv.byte_array_from_slice(binary_message.as_slice()).unwrap();
-
-    // let result = jenv.call_static_method(BleWrapperClass, "static_receiveRequest", "([B)V", &[
-    //     JValue::from(jmessage)
-    // ]);
-
     // send it to libqaul
-//    super::send_sys(binary_message);
+   super::send_sys(binary_message);
 }
 
 /// receive a sys message on android from libqaul
@@ -176,31 +202,120 @@ pub extern "system" fn Java_net_qaul_libqaul_LibqaulKt_sysreceive(
 }
 
 
+pub struct Android {
 
+}
+
+impl Android {
     /// send an sys message to Android BLE Module
     /// This function will call the Android BLE Module's "receiveRequest" function.
     pub fn send_to_android(message: Vec<u8>) {
-        // let jvm_args = InitArgsBuilder::new()
-        //     .version(JNIVersion::V8)
-        //     .option("-Xcheck:jni")
-        //     .build()
-        //     .unwrap();
+        Self::call_java_callback(message);
+    }
+    
+    unsafe fn register_natives(jvm: &JavaVM, class_name: &str, methods: &[NativeMethod]) -> jint {
+        let env: JNIEnv = jvm.get_env().unwrap();
+        let jni_version = env.get_version().unwrap();
+        let version: jint = jni_version.into();
+    
+        let clazz = match env.find_class(class_name) {
+            Ok(clazz) => clazz,
+            Err(e) => {
+         //       log::error!("java class not found : {:?}", e);
+                return JNI_ERR;
+            }
+        };
+        let result = env.register_native_methods(clazz, &methods);
+    
+        if result.is_ok() {
+         //   log::info!("register_natives : succeed");
+            version
+        } else {
+         //   log::error!("register_natives : failed ");
+            JNI_ERR
+        }
+    }
 
-        // let jvm = JavaVM::new(jvm_args).unwrap();
-        // let jenv:AttachGuard = jvm.attach_current_thread().unwrap();
-        
-        let jenv = javavm::get_env();
-        let BleWrapperClass = jenv
-            .find_class("net/qaul/ble/core/BleWrapperClass")
-            .expect("Failed to load the target class");
-        
-        let jmessage:jbyteArray = jenv.byte_array_from_slice(message.as_slice()).unwrap();
+    fn call_jvm<F>(callback: &Mutex<Option<GlobalRef>>, run: F)
+    where
+        F: Fn(JObject, &JNIEnv) + Send + 'static,
+    {
+        let ptr_jvm = JVM_GLOBAL.lock().unwrap();
+        if (*ptr_jvm).is_none() {
+            return;
+        }
+        let ptr_fn = callback.lock().unwrap();
+        if (*ptr_fn).is_none() {
+            return;
+        }
+        let jvm: &JavaVM = (*ptr_jvm).as_ref().unwrap();
+        match jvm.attach_current_thread_permanently() {
+            Ok(env) => {
+                let obj = (*ptr_fn).as_ref().unwrap().as_obj();
+                run(obj, &env);
+                if let Ok(true) = env.exception_check() {
+                    let _ = env.exception_describe();
+                    let _ = env.exception_clear();
+                }
+            }
+            Err(e) => {
+                log::debug!("jvm attach_current_thread failed: {:?}", e);
+            }
+        }
+    }
 
-        let result = jenv.call_static_method(BleWrapperClass, "static_receiveRequest", "([B)V", &[
-            JValue::from(jmessage)
-        ]);
+
+    pub fn call_java_callback(fun_type:Vec<u8>) {
         
-        result.map_err(|e| e.to_string()).unwrap();
-        
+        Self::call_jvm(&JNI_CALLBACK, move |obj: JObject, env: &JNIEnv| {
+            let jmessage:jbyteArray = env.byte_array_from_slice(fun_type.as_slice()).unwrap();
+            match env.call_method(
+                obj,
+                "OnLibqaulMessage",
+                "([B)V",
+                &[JValue::from(JObject::from(jmessage))],
+            ) {
+                Ok(jvalue) => {
+                    log::debug!("callback succeed: {:?}", jvalue);
+                }
+                Err(e) => {
+                    log::error!("callback failed : {:?}", e);
+                }
+            }
+        });
     }
 }
+
+
+// pub fn send_to_android(message: Vec<u8>) {
+    //     // let jvm_args = InitArgsBuilder::new()
+    //     //     .version(JNIVersion::V8)
+    //     //     .option("-Xcheck:jni")
+    //     //     .build()
+    //     //     .unwrap();
+    //     log::error!("-------------111");
+    //     // let jvm = JavaVM::new(jvm_args).unwrap();
+    //     let handle = std::thread::spawn(move || {
+
+    //         log::error!("-------------222");
+
+    //         let jvm = javavm::jvm().unwrap();
+
+    //         let jenv = javavm::get_env();
+    //         // let jenv = jvm.attach_current_thread().expect("attatch");
+    //         let BleWrapperClass = jenv
+    //             .find_class("net/qaul/ble/core/BleWrapperClass")
+    //             .expect("Failed to load the target class");
+            
+    //         log::error!("-------------333");
+    //         let jmessage:jbyteArray = jenv.byte_array_from_slice(message.as_slice()).unwrap();
+
+    //         let result = jenv.call_static_method(BleWrapperClass, "static_receiveRequest", "([B)V", &[
+    //             JValue::from(jmessage)
+    //         ]);
+            
+    //         result.map_err(|e| e.to_string()).unwrap();
+    //     });
+
+    //     handle.join().unwrap();
+    // }

@@ -221,7 +221,7 @@ pub async fn start(storage_path: String, def_config: Option<BTreeMap<String, Str
 
     // initialize router
     Router::init();
-
+    log::trace!("=====================2");
     // initialize Connection Modules
     let conn = Connections::init().await;
     let mut internet = conn.internet.unwrap();

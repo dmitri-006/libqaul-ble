@@ -14,7 +14,8 @@
 
 use crossbeam_channel::{unbounded, Sender, Receiver, TryRecvError};
 use state::Storage;
-
+use futures::executor::block_on;
+use std::thread;
 use crate::connections::{
     lan::Lan,
     internet::Internet,
@@ -111,5 +112,6 @@ impl Sys {
 
         #[cfg(target_os = "android")]
         Android::send_to_android(data);
+           
     }
 }
